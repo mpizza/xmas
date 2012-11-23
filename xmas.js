@@ -22,10 +22,10 @@ var selobj,
 $(function(){
   init();
   $('#left_bt').click(function(){
-    rotateBox(1);
+    rotateBox(-1);
   });
   $('#right_bt').click(function(){
-    rotateBox(-1);
+    rotateBox(1);
   });
 })
 function rotateBox(direct){
