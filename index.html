@@ -2,20 +2,43 @@
 <html xml:lang="zh-TW" lang="zh-TW">
   <head>
   	<meta http-equiv="content-type" content="text/html; charset=UTF-8"/> 
-  	<title>template demo</title>
+  	<title>xmas demo</title>
   	<style>
-  	  canvas#pad{
-  	    border:1px solid #f00;
+  	  div#content{
+  	    position:relative;
+  	    width:900px;
+  	    margin:auto;
+  	  }
+  	  canvas#pad, canvas#g_pad{
+  	    width:100%;
+  	    border:1px solid black;
+  	  }
+  	  img#bgimage, img#okimage{
+  	    display:none;
+  	  }
+  	  div#tool{
+  	    position:absolute;
+  	    display:none;
   	  }
 		</style>
   </head>
   <body>
   	<div id="content">
-      <canvas id="canvas1" width="900" height="600" style="border: 1px solid black;">
+  	  <img id="bgimage" src="main-page.png" />
+      <canvas id="pad" width="900" height="600">
       This text is displayed if your browser does not support HTML5 Canvas.
       </canvas>
-      <input type="button" value="left" id="left_bt" /><input type="button" value="right" id="right_bt" />
-		</div>
+      <br />
+      <input type="button" value="save" id="save_bt">
+      <div id="tool">
+        <input type="button" value="left" id="left_bt" />
+        <input type="button" value="right" id="right_bt" />
+        <input type="button" value="delete" id="del_bt" />
+      </div>
+      <img id="okimage" src="main-page.png" />
+	  </div>
+	  <div id="test">
+	  </div>
   	<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.7/jquery.min.js"></script>
     <script type="text/javascript" src="xmas.js"></script>
   </body>

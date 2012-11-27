@@ -12,32 +12,59 @@
 
 //By garychen
 //gchen@mozilla.com
-// Last update November 2012
+//Last update November 2012
 //add rotate feature
-var selobj,
-    counter = 0,
-    pubctx,
-    TO_RADIANS = Math.PI/180,
+//add layer feature
+//change image.load rank
+var TO_RADIANS = Math.PI/180,
     pubs;
+    
 $(function(){
   init();
-  $('#left_bt').click(function(){
+  $('#del_bt').on('click', function(){
+    removesel();
+  });
+  
+  $('#left_bt').on('click',function(){
     rotateBox(-1);
   });
-  $('#right_bt').click(function(){
+  
+  $('#right_bt').on('click',function(){
     rotateBox(1);
   });
+  
+  $('#save_bt').on('click', function(){
+    var canvas = pubs.canvas;
+    pubs.selection = null;
+    pubs.valid = false;
+    pubs.draw();
+    var dataimgurl = canvas.toDataURL("image/png");
+    $.post('savepic.php',{dataurl:dataimgurl},function(data){
+     //$('#test').html(data);
+     $('#okimage').attr('src', data).css('display','block');
+    });
+    
+  });
 })
+
+function removesel(){
+  var shapes = pubs.shapes;
+  var del = shapes.pop();
+  pubs.selection = null;
+  pubs.valid = false;
+  pubs.draw();
+}
+
 function rotateBox(direct){
-  selobj = pubs.selection;
-  selobj.angle = selobj.angle+30*direct+360;
-  console.log(direct);
+  var selobj = pubs.selection;
+  selobj.angle = selobj.angle+20*direct+360;
+  //console.log(direct);
   pubs.valid = false;
   pubs.draw();
 }
 
 
-function Shape(x, y, w, h, angle, label, rotate, image_src, fill) {
+function Shape(x, y, w, h, angle, label, rotate, image, fill) {
   // This is a very simple and unsafe constructor. All we're doing is checking if the values exist.
   // "x || 0" just means "if there is a value for x, use that. Otherwise use 0."
   // But we aren't checking anything else! We could put "Lalala" for the value of x 
@@ -49,7 +76,7 @@ function Shape(x, y, w, h, angle, label, rotate, image_src, fill) {
   this.label = label || 'noname';
   this.rotate = rotate || false;
   this.angle = angle || 0;
-  this.src = image_src || "logo.png"
+  this.img = image;
 }
 
 // Draws this shape to a given context
@@ -61,17 +88,12 @@ Shape.prototype.draw = function(ctx) {
   var angle = this.angle;
   var rotate =this.rotate;
   var imgsrc= this.src;
-  var imgNew = new Image();
-  //console.log("shape draw:"+this.label+":"+this.rotate);
-  imgNew.onload = function(){ 
-    //console.log("rotate"+angle * TO_RADIANS+":"+locx+":"+locy);
-    ctx.save(); 
-    ctx.translate(locx+locw/2, locy+loch/2);
-    ctx.rotate(angle * TO_RADIANS);
-    ctx.drawImage(imgNew, -(locw/2), -(loch/2));
-    ctx.restore(); 
-  }
-  imgNew.src = imgsrc;
+  var img = this.img; 
+  ctx.save(); 
+  ctx.translate(locx+locw/2, locy+loch/2);
+  ctx.rotate(angle * TO_RADIANS);
+  ctx.drawImage(img, -(locw/2), -(loch/2));
+  ctx.restore(); 
 }
 
 // Determine if a point is inside the shape's bounds
@@ -82,14 +104,16 @@ Shape.prototype.contains = function(mx, my) {
           (this.y <= my) && (this.y + this.h >= my);
 }
 
-function CanvasState(canvas) {
+function CanvasState(canvas, bgimage) {
   // **** First some setup! ****
   
   this.canvas = canvas;
   this.width = canvas.width;
   this.height = canvas.height;
   this.ctx = canvas.getContext('2d');
-  pubctx =this.ctx;
+  this.toolbox = document.getElementById('tool') ;
+  this.BG = bgimage;
+  
   // This complicates things a little but but fixes mouse co-ordinate problems
   // when there's a border or padding. See getMouse for more detail
   var stylePaddingLeft, stylePaddingTop, styleBorderLeft, styleBorderTop;
@@ -125,7 +149,10 @@ function CanvasState(canvas) {
   var myState = this;
   
   //fixes a problem where double clicking causes text to get selected on the canvas
-  canvas.addEventListener('selectstart', function(e) { e.preventDefault(); return false; }, false);
+  canvas.addEventListener('selectstart', function(e) { 
+    e.preventDefault(); return false; 
+  }, false);
+  
   // Up, down, and move are for dragging
   canvas.addEventListener('mousedown', function(e) {
     var mouse = myState.getMouse(e);
@@ -136,7 +163,8 @@ function CanvasState(canvas) {
     for (var i = l-1; i >= 0; i--) {
       if (shapes[i].contains(mx, my)) {
         var mySel = shapes[i];
-        selobj = mySel;
+        shapes.splice(i, 1);
+        shapes.push(mySel);
         // Keep track of where in the object we clicked
         // so we can move it smoothly (see mousemove)
         myState.dragoffx = mx - mySel.x;
@@ -144,6 +172,7 @@ function CanvasState(canvas) {
         myState.dragging = true;
         myState.selection = mySel;
         myState.valid = false;
+        myState.draw(); //redraw
         return;
       }
     }
@@ -152,8 +181,10 @@ function CanvasState(canvas) {
     if (myState.selection) {
       myState.selection = null;
       myState.valid = false; // Need to clear the old selection border
+      myState.draw(); //redraw
     }
   }, true);
+  
   canvas.addEventListener('mousemove', function(e) {
     if (myState.dragging){
       var mouse = myState.getMouse(e);
@@ -162,24 +193,29 @@ function CanvasState(canvas) {
       myState.selection.x = mouse.x - myState.dragoffx;
       myState.selection.y = mouse.y - myState.dragoffy;   
       myState.valid = false; // Something's dragging so we must redraw
+      myState.draw(); //redraw
     }
   }, true);
   canvas.addEventListener('mouseup', function(e) {
     myState.dragging = false;
   }, true);
   // double click for making new shapes
-  /*
+  
   canvas.addEventListener('dblclick', function(e) {
-    var mouse = myState.getMouse(e);
-    myState.addShape(new Shape(mouse.x - 10, mouse.y - 10, 20, 20, '', false, 'rgba(0,255,0,.6)'));
+    //add new icon
+    //var mouse = myState.getMouse(e);
+    //myState.addShape(new Shape(mouse.x - 10, mouse.y - 10, 20, 20, '', false, 'rgba(0,255,0,.6)'));
+    //myState.cleanSelborder();
   }, true);
-  */
+  
   // **** Options! ****
   
   this.selectionColor = '#CC0000';
-  this.selectionWidth = 2;  
+  this.selectionWidth = 2;
+  /*  
   this.interval = 30;
   setInterval(function() { myState.draw(); }, myState.interval);
+  */
 }
 
 CanvasState.prototype.addShape = function(shape) {
@@ -191,14 +227,49 @@ CanvasState.prototype.clear = function() {
   this.ctx.clearRect(0, 0, this.width, this.height);
 }
 
+CanvasState.prototype.cleanSelborder = function() {
+  if (this.selection != null) {
+    this.selection = null;
+    this.valid = false;
+  }
+}
+
+CanvasState.prototype.showtool = function(posx, posy){
+  this.toolbox.style.display = 'block';
+  this.toolbox.style.top = posy+10+'px';
+  this.toolbox.style.left = posx+'px';
+  //console.log(posx+":"+posy);
+}
+
+CanvasState.prototype.hidetool = function(){
+  this.toolbox.style.display = 'none';
+}
 // While draw is called as often as the INTERVAL variable demands,
 // It only ever does something if the canvas gets invalidated by our code
+CanvasState.prototype.g_draw = function() {
+  var ctx = this.ctx;
+  var gctx = this.gctx;
+  var canvas = this.canvas;
+  
+  var imgData=ctx.getImageData(0,0, canvas.width, canvas.height);
+  gctx.putImageData(imgData,0,0);
+}
+
+CanvasState.prototype.drawBG = function() {
+  var bg = this.BG;
+  var ctx = this.ctx;
+  ctx.drawImage(bg, 0, 0);
+  //console.log('draw bg');
+}
+
 CanvasState.prototype.draw = function() {
   // if our state is invalid, redraw and validate!
   if (!this.valid) {
+    //console.log('redraw');
     var ctx = this.ctx;
     var shapes = this.shapes;
-    this.clear();
+    this.clear(); //reset canvas
+    this.drawBG();// set default bg
     
     // ** Add stuff you want drawn in the background all the time here **
     
@@ -211,7 +282,6 @@ CanvasState.prototype.draw = function() {
           shape.x + shape.w < 0 || shape.y + shape.h < 0) continue;
       shapes[i].draw(ctx);
     }
-    
     // draw selection
     // right now this is just a stroke along the edge of the selected Shape
     if (this.selection != null) {
@@ -219,12 +289,13 @@ CanvasState.prototype.draw = function() {
       ctx.lineWidth = this.selectionWidth;
       var mySel = this.selection;
       ctx.strokeRect(mySel.x,mySel.y,mySel.w,mySel.h);
-      console.log("select:"+mySel.label);
+      //console.log("select:"+mySel.label);
+      this.showtool(mySel.x, (mySel.y+mySel.h));
     }else{
-      console.log("select null");
+      //console.log("select null");
+      this.hidetool();
     }
     // ** Add stuff you want drawn on top all the time here **
-    
     this.valid = true;
   }
 }
@@ -260,13 +331,49 @@ CanvasState.prototype.getMouse = function(e) {
 //init();
 
 function init() {
-  var s = new CanvasState(document.getElementById('canvas1'));
-  pubs =s ;
-  s.addShape(new Shape(100,100,128,128,0,'aurora', false,'aurora')); // The default is gray
-  s.addShape(new Shape(300,100,128,128,0, 'firefox',false ,'firefox','lightskyblue'));
+  var BGimage = new Image();
+  BGimage.src = document.getElementById('bgimage').src;
+  BGimage.onload = function(){
+    console.log(BGimage.src);
+    pubs = new CanvasState(document.getElementById('pad'), BGimage);
+  }
+  
+  var aurora= new Image();
+  aurora.src = 'aurora.png';
+  aurora.onload = function(){ 
+    pubs.addShape(new Shape(100,100,128,128,0,'aurora', false, aurora)); // The default is gray
+    pubs.valid = false;
+    pubs.draw();
+  }
+  
+  var firefox = new Image();
+  firefox.src = 'firefox.png';
+  firefox.onload = function(){ 
+    pubs.addShape(new Shape(300,100,128,128,0, 'firefox',false ,firefox,'lightskyblue'));
+    pubs.valid = false;
+    pubs.draw();
+  }
+  
+  var nightly = new Image();
+  nightly.src = 'nightly.png';
+  nightly.onload = function(){ 
+    pubs.addShape(new Shape(500,100,128,128,0, 'nightly',false ,nightly,'lightskyblue'));
+    pubs.valid = false;
+    pubs.draw();
+  }
+  
+  var nightly2 = new Image();
+  nightly2.src = 'logo.png';
+  nightly2.onload = function(){ 
+    pubs.addShape(new Shape(700,100,128,128,0, 'nightly',false ,nightly2,'lightskyblue'));
+    pubs.valid = false;
+    pubs.draw();
+  }
+  
   // Lets make some partially transparent
-  s.addShape(new Shape(500,100,128,128,0, 'nightly',false,'nightly', 'rgba(127, 255, 212, .5)'));
-  s.addShape(new Shape(700,100,128,128,0, 'js',false,'logo.png', 'rgba(245, 222, 179, .7)'));
+  //s.addShape(new Shape(500,100,128,128,0, 'nightly',false,'nightly.png', 'rgba(127, 255, 212, .5)'));
+  //s.addShape(new Shape(700,100,128,128,0, 'js',false,'logo.png', 'rgba(245, 222, 179, .7)'));
+
 }
 
 // Now go make something amazing!
