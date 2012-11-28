@@ -323,8 +323,10 @@ CanvasState.prototype.draw = function() {
 // Creates an object with x and y defined, set to the mouse position relative to the state's canvas
 // If you wanna be super-correct this can be tricky, we have to worry about padding and borders
 CanvasState.prototype.getMouse = function(e) {
-  var element = this.canvas, offsetX = 0, offsetY = 0, mx, my;
+  var element = this.canvas, offsetX = 0, offsetY = 0, mx, my,touches = e.changedTouches;
   
+  var _pageX = e.pageX || touches[0].pageX;
+  var _pageY = e.pageY || touches[0].pageY;
   // Compute the total offset
   if (element.offsetParent !== undefined) {
     do {
@@ -338,8 +340,8 @@ CanvasState.prototype.getMouse = function(e) {
   offsetX += this.stylePaddingLeft + this.styleBorderLeft + this.htmlLeft;
   offsetY += this.stylePaddingTop + this.styleBorderTop + this.htmlTop;
 
-  mx = e.pageX - offsetX;
-  my = e.pageY - offsetY;
+  mx = _pageX - offsetX;
+  my = _pageY - offsetY;
   
   // We return a simple javascript object (a hash) with x and y defined
   return {x: mx, y: my};
