@@ -148,13 +148,11 @@ function CanvasState(canvas, bgimage) {
   // This is our reference!
   var myState = this;
   
-  //fixes a problem where double clicking causes text to get selected on the canvas
-  canvas.addEventListener('selectstart', function(e) { 
+  this.selectstart = function selectstart (e){
     e.preventDefault(); return false; 
-  }, false);
+  } 
   
-  // Up, down, and move are for dragging
-  canvas.addEventListener('mousedown', function(e) {
+  this.touch_mousedown = function touch_mousedown (e){
     var mouse = myState.getMouse(e);
     var mx = mouse.x;
     var my = mouse.y;
@@ -183,9 +181,9 @@ function CanvasState(canvas, bgimage) {
       myState.valid = false; // Need to clear the old selection border
       myState.draw(); //redraw
     }
-  }, true);
+  } 
   
-  canvas.addEventListener('mousemove', function(e) {
+  this.touch_mousemove = function touch_mousemove(e) {
     if (myState.dragging){
       var mouse = myState.getMouse(e);
       // We don't want to drag the object by its top-left corner, we want to drag it
@@ -195,18 +193,39 @@ function CanvasState(canvas, bgimage) {
       myState.valid = false; // Something's dragging so we must redraw
       myState.draw(); //redraw
     }
-  }, true);
-  canvas.addEventListener('mouseup', function(e) {
-    myState.dragging = false;
-  }, true);
-  // double click for making new shapes
+  } 
   
-  canvas.addEventListener('dblclick', function(e) {
+  this.touch_mouse_end = function touch_mouse_end(e) {
+    myState.dragging = false;
+  }
+  
+  /*
+  this.db_touch_mouse = function db_touch_mouse(e) {
     //add new icon
     //var mouse = myState.getMouse(e);
     //myState.addShape(new Shape(mouse.x - 10, mouse.y - 10, 20, 20, '', false, 'rgba(0,255,0,.6)'));
     //myState.cleanSelborder();
-  }, true);
+  }
+  */
+  
+  //fixes a problem where double clicking causes text to get selected on the canvas
+  canvas.addEventListener('selectstart', this.selectstart, false);
+  
+  // Up, down, and move are for dragging
+  canvas.addEventListener('mousedown', this.touch_mousedown, true);
+  canvas.addEventListener("touchstart", this.touch_mousedown, false);
+  
+  canvas.addEventListener('mousemove', this.touch_mousemove, true);
+  canvas.addEventListener("touchmove", this.touch_mousemove, false);
+  
+  
+  canvas.addEventListener('mouseup', this.touch_mouse_end, true);
+  canvas.addEventListener("touchend", this.touch_mouse_end, false);
+  canvas.addEventListener("touchcancel", this.touch_mouse_end, false);
+  canvas.addEventListener("touchleave", this.touch_mouse_end, false);
+  
+  // double click for making new shapes
+  //canvas.addEventListener('dblclick', this.db_touch_mouse, true);
   
   // **** Options! ****
   
