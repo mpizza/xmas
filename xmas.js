@@ -221,8 +221,8 @@ function CanvasState(canvas, bgimage) {
   
   canvas.addEventListener('mouseup', this.touch_mouse_end, true);
   canvas.addEventListener("touchend", this.touch_mouse_end, false);
-  canvas.addEventListener("touchcancel", this.touch_mouse_end, false);
-  canvas.addEventListener("touchleave", this.touch_mouse_end, false);
+  //canvas.addEventListener("touchcancel", this.touch_mouse_end, false);
+  //canvas.addEventListener("touchleave", this.touch_mouse_end, false);
   
   // double click for making new shapes
   //canvas.addEventListener('dblclick', this.db_touch_mouse, true);
